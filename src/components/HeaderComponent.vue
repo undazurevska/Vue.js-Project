@@ -9,6 +9,7 @@
         <span class="avatar"></span>
         <h3 id="txt-full-name">{{ fullName }}</h3>
       </div>
+      <!--Page has to be reloaded for this to work -->
       <button id="btn-logout" @click="logout">LOGOUT</button>
     </div>
   </div>
@@ -27,7 +28,6 @@ export default {
   },
   methods: {
     logout() {
-      // Call the authenticate method from your useAuthStore
       useAuthStore().logout();
     },
   },

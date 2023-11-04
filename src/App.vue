@@ -31,7 +31,6 @@ export default {
     },
     computed: {
         isAuthenticated() {
-            // Access the is_authenticated getter from your useAuthStore
             return useAuthStore().is_authenticated;
         }
     }

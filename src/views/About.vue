@@ -3,6 +3,7 @@
       <div class="wrapper-header">
         <h1>ABOUT ME</h1>
         <div class="settings">
+          <!--Empty input fields on first edit click! Can't fix the logic-->
           <button id="btn-edit" @click="toggleEditForm">{{ isEditing ? 'Cancel' : 'Edit Form' }}</button>
           <button id="btn-save" @click="saveForm" v-show="isEditing">Save Form</button>
         </div>
@@ -24,25 +25,25 @@
           <p id="txt-code" v-show="!isEditing">{{ code }}</p>
         </div>
         <div class="wrapper-songs">
-          <label>FAVORITE SONGS</label>
-          <ul>
-  <li v-for="song in favoriteSongs" :key="song.id">
-    <img id="img-album" :src="song.album && song.album.images ? song.album.images[0].url : ''" />
-    <div class="song-info">
-      <p id="txt-song" class="song-name">{{ song.name }}</p>
-      <p id="txt-artist" class="song-artists">{{ song.artists }}</p>
-    </div>
-  </li>
-</ul>
-
-           <div id="txt-empty" class="empty" v-show="favoriteSongs.length === 0">NO SONGS FOUND</div>
-        </div>
+                <label>FAVORITE SONGS</label>
+                <ul v-if="favSongs.length > 0">
+                    <li v-for="song in favSongs" :key="song.id">
+                        <img id="img-album" :src="song.album.images[0].url" />
+                        <div class="song-info">
+                            <p id="txt-song" class="song-name">{{ song.name }}</p>
+                            <p id="txt-artist" class="song-artists">{{ song.artists[0].name }}</p>
+                        </div>
+                    </li>
+                </ul>
+                <div id="txt-empty" class="empty" v-else>NO SONGS FOUND</div>
+            </div>
       </form>
     </div>
   </template>
   
   <script>
   import { useAuthStore } from '../auth.js';
+  import songsSaved from '../data/songs.js';
   
   export default {
     computed: {
@@ -58,10 +59,11 @@
       isEditing() {
         return this.$data.editingForm;
       },
-      favoriteSongs() {
-        const songs = useAuthStore().getFavoriteSongs();
-        console.log(songs);
-        return songs;
+      favSongs() {
+        const authStore = useAuthStore();
+
+            const favoriteSongs = authStore.getFavoriteSongs();
+            return songsSaved.filter((song) => favoriteSongs.includes(song.id));
         },
 
     },
@@ -78,7 +80,6 @@
     methods: {
       toggleEditForm() {
         if (this.isEditing) {
-          // If editing is canceled, reset the form data to the original values
           this.formData.name = this.name;
           this.formData.surname = this.surname;
           this.formData.code = this.code;
@@ -86,13 +87,8 @@
         this.editingForm = !this.editingForm;
       },
       saveForm() {
-        // Get the auth store instance directly
         const authStore = useAuthStore();
-  
-        // Save the edited form data from the formData object
         authStore.setUserData(this.formData.name, this.formData.surname, this.formData.code);
-  
-        // Disable editing after saving
         this.editingForm = false;
       },
      

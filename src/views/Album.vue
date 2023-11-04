@@ -13,7 +13,7 @@
           v-for="album in albums"
           :key="album.id"
           @click="selectAlbum(album)"
-          :class="{ active: album.id === currentAlbumId }"
+          :class="{ active: album.id ===  playerStore.getNowPlayingAlbumID }"
         >
           <img id="img-album" :src="album.coverImage" />
           <div class="album-info">
@@ -31,10 +31,9 @@
   
   <script>
   import songs from '../data/songs.js';
-  import IconGrid from './icons/IconGrid.vue';
-  import IconList from './icons/IconList.vue';
-
-
+  import IconGrid from '../components/icons/IconGrid.vue';
+  import IconList from '../components/icons/IconList.vue';
+  import { usePlayerStore } from '@/stores/player'
 
   export default {
     components: {IconGrid, IconList},
@@ -42,6 +41,7 @@
       return {
         isGridLayoutActive: false,
         currentAlbumId: null,
+        playerStore: usePlayerStore(),
       };
     },
     computed: {
@@ -65,6 +65,23 @@
       },
     },
     methods: {
+      selectAlbum(album) {
+            if (this.lastClicked !== album) {
+                this.doubleClick = 0;
+                this.lastClicked = album;
+            }
+            this.doubleClick++;
+            if (this.doubleClick === 1) {
+                this.timer = setTimeout(() => {
+                    this.doubleClick = 0;
+                }, 500);
+            } else {
+                clearTimeout(this.timer);
+                this.playerStore.setPlaylist(album.tracks);
+                this.playerStore.setNowPlaying(album.tracks[0]);
+                this.doubleClick = 0;
+            }
+        },
       setGridLayout(layout) {
         this.isGridLayoutActive = layout === 'grid';
       },
@@ -73,12 +90,6 @@
       },
       getTrackCount(tracks) {
         return `${tracks.length} song${tracks.length !== 1 ? 's' : ''}`;
-      },
-      selectAlbum(album) {
-        // Handle album selection, you can use this method to update the player's playlist
-        this.currentAlbumId = album.id;
-        // Call methods to update the player's playlist and set currently playing song
-        // Replace with your logic
       },
     },
   };

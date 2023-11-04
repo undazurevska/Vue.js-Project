@@ -20,13 +20,13 @@
       <table cellspacing="0" cellpadding="0">
         <tr ref="header">
           <th id="th-id">#</th>
-          <th id="th-title" @click="sortBy('title')" :class="{ active: sortBy === 'title', 'flip-vertical': sortBy === 'title' && sortDirection === -1 }">
+          <th id="th-title"  @click="applyFilter('Title')" :class="{ active: activeFilter === 'Title' }">
             Title
             <IconCaretUp v-if="sortBy === 'title'" :class="{ 'flip-vertical': sortDirection === -1 }" />
           </th>
           <th id="th-artist">Artist</th>
           <th id="th-album">Album</th>
-          <th id="th-duration" @click="sortBy('duration_ms')" :class="{ active: sortBy === 'duration_ms', 'flip-vertical': sortBy === 'duration_ms' && sortDirection === -1 }">
+          <th id="th-duration"   @click="applyFilter('Duration')" :class="{ active: activeFilter === 'Duration' }">
           Duration
           <IconCaretUp v-if="sortBy === 'duration_ms'" :class="{ 'flip-vertical': sortDirection === -1 }" />
         </th>
@@ -34,10 +34,10 @@
           Like
         </th>
         </tr>
-        <!-- Loop through song data -->
-        <tr class="song" v-for="(song, index) in filteredSongs" :key="song.id">
+        <tr class="song" v-for="(song, index) in filteredSongs" :key="song.id" @click="playSong(song)" :class="{ active: playerStore.getNowPlaying === song }">
           <td id="td-index" @dblclick="playSong(song)" @click="toggleFavorite(song)">
-            <span id="txt-index">{{ index + 1 }}</span>
+            <IconPlay v-if="playerStore.getNowPlaying === song" color="var(--c-accent-secondary)" />
+            <span id="txt-index" v-else>{{ index + 1 }}</span>
           </td>
           <td id="td-title">
             <img :src="song.album.images[0].url" />
@@ -57,38 +57,39 @@
     </div>
   </div>
 </template>
-
 <script>
 import songs from '../data/songs.js';
-import IconPlay from './icons/IconPlay.vue';
-import IconHeart from './icons/IconHeart.vue';
-import IconCaretUp from './icons/IconCaretUp.vue';
+import IconPlay from '../components/icons/IconPlay.vue';
+import IconHeart from '../components/icons/IconHeart.vue';
+import IconCaretUp from '../components/icons/IconCaretUp.vue';
 import { useAuthStore } from '../auth.js';
-
-
+import { usePlayerStore } from '@/stores/player';
 
 export default {
-  components: { IconPlay, IconHeart, IconCaretUp},
+  components: { IconPlay, IconHeart, IconCaretUp },
   data() {
     return {
       songs: songs,
-      sortBy: null,
       sortDesc: false,
       searchText: '',
       showFavorites: false,
+      playerStore: usePlayerStore(),
+      sortBy: '',
+      sortDirection: 1,
+      activeFilter: 'None',
+      doubleClick: 0,
+      lastClicked: null,
     };
   },
   computed: {
     filteredSongs() {
       const search = this.searchText.toLowerCase();
-      let filtered = this.songs.filter(song => song.name.toLowerCase().includes(search));
+      let filtered = this.songs.filter((song) => song.name.toLowerCase().includes(search));
 
-      // If showFavorites is true, only show favorite songs
       if (this.showFavorites) {
-        filtered = filtered.filter(song => this.favoriteSongs.includes(song.id));
+        filtered = filtered.filter((song) => this.favoriteSongs.includes(song.id));
       }
 
-      // Sort the filtered songs
       if (this.sortBy) {
         filtered.sort((a, b) => {
           const propA = a[this.sortBy];
@@ -96,70 +97,85 @@ export default {
           return (propA > propB ? 1 : -1) * this.sortDirection;
         });
       }
+      filtered = filtered.filter((song, index, self) => {
+        return self.findIndex((s) => s.id === song.id) === index;
+      });
+    
 
       return filtered;
     },
-    
+
     favoriteSongs() {
       return useAuthStore().getFavoriteSongs();
     },
   },
 
-
   methods: {
     handleScroll(event) {
       this.$refs.header.classList.value = event.target.scrollTop > 100 ? 'scrolled' : '';
     },
+    applyFilter(filter) {
+      if (filter === this.activeFilter) {
+        this.sortDirection = -this.sortDirection;
+      } else {
+        this.sortDirection = 1;
+      }
+
+      this.activeFilter = filter;
+      this.sortBy = filter === 'Title' ? 'name' : filter === 'Duration' ? 'duration_ms' : '';
+    },
     getArtistsNames(artists) {
-      return artists.map(artist => artist.name).join(', ');
+      return artists.map((artist) => artist.name).join(', ');
     },
     formatDuration(durationMs) {
-      // Convert milliseconds to a human-readable format (e.g., "3:07")
       const minutes = Math.floor(durationMs / 60000);
       const seconds = ((durationMs % 60000) / 1000).toFixed(0);
       return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
     },
-    playSong(song) {
-      // Handle playing the song on double-click
-      // You can implement your audio player logic here.
-      // For example, you can use the Web Audio API to play the song.
-    },
 
     toggleFavorite(song) {
-      // Get the song's ID
       const songID = song.id;
 
-      // Access the auth store
       const authStore = useAuthStore();
-
-      // Check if the song is already a favorite
       const isFavorite = authStore.getFavoriteSongs().includes(songID);
 
       if (isFavorite) {
-        // If the song is a favorite, remove it
         authStore.toggleFavorite(songID);
       } else {
-        // If the song is not a favorite, add it
         authStore.toggleFavorite(songID);
       }
     },
     isFavorite(song) {
-  const authStore = useAuthStore();
-  const favoriteSongs = authStore.getFavoriteSongs();
+      const authStore = useAuthStore();
+      const favoriteSongs = authStore.getFavoriteSongs();
 
-  const isFavorite = favoriteSongs.includes(song.id);
-  return isFavorite;
-},
-
+      const isFavorite = favoriteSongs.includes(song.id);
+      return isFavorite;
+    },
 
     toggleShowFavorites() {
       this.showFavorites = !this.showFavorites;
-
-
     },
+    playSong(song) {
+      if (this.lastClicked !== song) {
+        this.doubleClick = 0;
+        this.lastClicked = song;
+      }
+      this.doubleClick++;
+      if (this.doubleClick === 1) {
+        this.timer = setTimeout(() => {
+          this.doubleClick = 0;
+        }, 500);
+      } else {
+        clearTimeout(this.timer);
+        this.playerStore.setNowPlaying(song);
+        this.doubleClick = 0;
+      }
+    },
+  },
+
+  mounted() {
+    this.playerStore.setPlaylist(this.songs);
   },
 };
 </script>
-
-
-

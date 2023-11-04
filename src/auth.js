@@ -32,8 +32,6 @@ export const useAuthStore = defineStore('auth', {
       if (email === 'unda' && password.length >= 6) {
         localStorage.setItem('is_authenticated', true);
         this.authenticated = true;
-        // Programmatically change the router address to "/"
-        // Replace this with your actual router setup
         router.push('/');
       }
     },
@@ -41,8 +39,6 @@ export const useAuthStore = defineStore('auth', {
     logout() {
       localStorage.clear();
       this.authenticated = false;
-      // Programmatically change the router address to "/login"
-      // Replace this with your actual router setup
       router.push('/login');
     },
 
